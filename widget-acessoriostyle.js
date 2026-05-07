@@ -6,9 +6,7 @@
     window.PROVOU_LEVOU_API_KEY = apiKey;
 
     const WEBHOOK_PROVA = 'https://n8n.segredosdodrop.com/webhook/gerador-oculos';
-    const WEBHOOK_PIX = 'https://n8n.segredosdodrop.com/webhook/cacife-pix';
-    const WEBHOOK_PIX_STATUS = 'https://n8n.segredosdodrop.com/webhook/cacife-pix-status';
-    const WEBHOOK_CHECK_LIMIT = 'https://n8n.segredosdodrop.com/webhook/acessoriostyle-check-limit';
+    // PIX e check-limit removidos a pedido da Acessórios Style (sem limite, sem PIX)
     const SIZES_TOP = ['XXP', 'XP', 'P', 'M', 'G', 'XG', 'XXG', '3XG', '4XG', '5XG'];
     const SIZES_BOTTOM = ['36/XXP', '38/XP', '40/P', '42/M', '44/G', '46/XG', '48/XXG', '50/3XG', '52/4XG', '54/5XG'];
     const SIZES_BOTTOM_SW = ['XXP', 'XP', 'P', 'M', 'G', 'XG', 'XXG', '3XG', '4XG', '5XG'];
@@ -1195,25 +1193,6 @@
             const _gNums = (phoneInput.value || '').replace(/\D/g, '');
             const _gPhoneOk = (_gNums.length === 10 || _gNums.length === 11) && /^[1-9][1-9]/.test(_gNums) && (_gNums.length === 10 || _gNums[2] === '9');
             if (!_gPhoneOk) { phoneInput.focus(); return; }
-
-            const phone = '55' + phoneInput.value.replace(/\D/g, '');
-            genBtn.disabled = true;
-
-            try {
-                const resp = await fetch(WEBHOOK_CHECK_LIMIT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone })
-                });
-                const data = await resp.json();
-                if (data.limited) {
-                    genBtn.disabled = false;
-                    createPixAndPoll();
-                    return;
-                }
-            } catch (_) {
-                // se o check falhar, deixa gerar (evita bloquear por erro de rede)
-            }
 
             genBtn.disabled = false;
             runGeneration();
