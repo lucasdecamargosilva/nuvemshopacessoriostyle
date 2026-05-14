@@ -277,6 +277,18 @@
         }
         .q-phone-wrap { margin-bottom: 28px; }
 
+        /* Display de provas restantes */
+        .q-limit-info {
+            display: none;
+            font-size: 11px; color: var(--c-muted);
+            margin-top: 6px; letter-spacing: 0.3px;
+            line-height: 1.4;
+        }
+        .q-limit-info.is-visible { display: block; }
+        .q-limit-info .q-limit-count { color: var(--c-ink); font-weight: 600; }
+        .q-limit-info.is-limited { color: var(--c-danger); }
+        .q-limit-info.is-limited .q-limit-count { color: var(--c-danger); }
+
         /* ── Photo selector (product images carousel) ── */
         .q-photo-selector-wrap { margin-bottom: 28px; display: none; }
         .q-photo-selector-wrap.is-visible { display: block; }
@@ -645,6 +657,7 @@
                             <span class="q-field-label">Seu WhatsApp</span>
                             <input type="tel" id="q-phone" class="q-input" placeholder="(11) 99999-9999" maxlength="15">
                             <div id="q-phone-error" class="q-status-msg">N&#250;mero inv&#225;lido</div>
+                            <div id="q-limit-info" class="q-limit-info"></div>
                         </div>
 
                         <!-- Product photo selector (carousel) -->
@@ -1167,7 +1180,56 @@
             const phoneOk = isValidBRPhone(nums);
             document.getElementById('q-phone-error').style.display = (phoneInput.value.length > 0 && !phoneOk) ? 'block' : 'none';
             phoneInput.style.borderColor = (phoneInput.value.length > 0 && !phoneOk) ? '#ef4444' : 'var(--q-border)';
+            if (phoneOk) fetchAndShowLimit(nums);
+            else hideLimitInfo();
             checkFields();
+        }
+
+        let _lastFetchedPhone = '';
+        async function fetchAndShowLimit(nums) {
+            const phone = '55' + nums;
+            if (_lastFetchedPhone === phone) return;
+            _lastFetchedPhone = phone;
+            try {
+                const r = await fetch(WEBHOOK_CHECK_LIMIT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                const data = await r.json();
+                renderLimitInfo(data);
+            } catch (_) {
+                hideLimitInfo();
+            }
+        }
+
+        function renderLimitInfo(data) {
+            const el = document.getElementById('q-limit-info');
+            if (!el || !data) return;
+            const limit = Number(data.limit) || 3;
+            const used = Number(data.phone_count) || 0;
+            const remaining = Math.max(0, limit - used);
+            el.classList.add('is-visible');
+            while (el.firstChild) el.removeChild(el.firstChild);
+            const count = document.createElement('span');
+            count.className = 'q-limit-count';
+            count.textContent = used + '/' + limit;
+            if (data.limited || remaining === 0) {
+                el.classList.add('is-limited');
+                el.appendChild(document.createTextNode('⚠️ Limite diário atingido ('));
+                el.appendChild(count);
+                el.appendChild(document.createTextNode(') — R$1 via PIX para uma prova extra'));
+            } else {
+                el.classList.remove('is-limited');
+                el.appendChild(document.createTextNode('Suas provas hoje: '));
+                el.appendChild(count);
+                el.appendChild(document.createTextNode(' (' + remaining + ' restante' + (remaining === 1 ? '' : 's') + ')'));
+            }
+        }
+
+        function hideLimitInfo() {
+            const el = document.getElementById('q-limit-info');
+            if (el) el.classList.remove('is-visible');
         }
 
         function checkFields() {
