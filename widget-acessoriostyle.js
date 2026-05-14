@@ -277,17 +277,23 @@
         }
         .q-phone-wrap { margin-bottom: 28px; }
 
-        /* Display de provas restantes */
-        .q-limit-info {
-            display: none;
-            font-size: 11px; color: var(--c-muted);
-            margin-top: 6px; letter-spacing: 0.3px;
-            line-height: 1.4;
+        .q-provas-msg:empty { display: none; }
+        .q-provas-msg {
+            font-size: 13px; margin-top: 10px; letter-spacing: 0.3px;
+            color: var(--c-ink); font-weight: 500;
+            background: var(--c-surface);
+            border: 1px solid var(--c-line);
+            border-radius: 6px;
+            padding: 10px 14px;
+            text-align: center;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
         }
-        .q-limit-info.is-visible { display: block; }
-        .q-limit-info .q-limit-count { color: var(--c-ink); font-weight: 600; }
-        .q-limit-info.is-limited { color: var(--c-danger); }
-        .q-limit-info.is-limited .q-limit-count { color: var(--c-danger); }
+        .q-provas-msg.is-warn {
+            color: var(--c-danger);
+            background: rgba(204,51,51,0.08);
+            border-color: rgba(204,51,51,0.3);
+            font-weight: 600;
+        }
 
         /* ── Photo selector (product images carousel) ── */
         .q-photo-selector-wrap { margin-bottom: 28px; display: none; }
@@ -657,7 +663,7 @@
                             <span class="q-field-label">Seu WhatsApp</span>
                             <input type="tel" id="q-phone" class="q-input" placeholder="(11) 99999-9999" maxlength="15">
                             <div id="q-phone-error" class="q-status-msg">N&#250;mero inv&#225;lido</div>
-                            <div id="q-limit-info" class="q-limit-info"></div>
+                            <div id="q-provas-restantes" class="q-provas-msg"></div>
                         </div>
 
                         <!-- Product photo selector (carousel) -->
@@ -747,6 +753,7 @@
                             <img id="q-final-view-img">
                         </div>
                         <div id="q-result-actions-col">
+                            <div id="q-provas-restantes-result" class="q-provas-msg" style="text-align:center;margin-bottom:8px;"></div>
                             <button class="q-btn-outline" id="q-btn-back">Voltar ao Produto</button>
                             <button class="q-btn-black q-res-mobile-only" id="q-retry-btn" style="display:flex;align-items:center;justify-content:center;gap:8px;">
                                 <i class="ph ph-camera"></i> Tentar outra foto
@@ -1180,57 +1187,40 @@
             const phoneOk = isValidBRPhone(nums);
             document.getElementById('q-phone-error').style.display = (phoneInput.value.length > 0 && !phoneOk) ? 'block' : 'none';
             phoneInput.style.borderColor = (phoneInput.value.length > 0 && !phoneOk) ? '#ef4444' : 'var(--q-border)';
-            if (phoneOk) fetchAndShowLimit(nums);
-            else hideLimitInfo();
             checkFields();
         }
 
-        let _lastFetchedPhone = '';
-        async function fetchAndShowLimit(nums) {
-            const phone = '55' + nums;
-            if (_lastFetchedPhone === phone) return;
-            _lastFetchedPhone = phone;
+        // ── Contador de provas restantes (debounced) ──
+        let _provasDebounce;
+        async function _checkProvasRestantes() {
+            const _els = document.querySelectorAll('.q-provas-msg');
+            if (!_els.length) return;
+            const nums = phoneInput.value.replace(/\D/g, '');
+            const phoneOk = isValidBRPhone(nums);
+            const phone = phoneOk ? '55' + nums : '0';
             try {
                 const r = await fetch(WEBHOOK_CHECK_LIMIT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone })
                 });
-                const data = await r.json();
-                renderLimitInfo(data);
-            } catch (_) {
-                hideLimitInfo();
-            }
+                const d = await r.json();
+                const used = Math.max(d.phone_count || 0, d.ip_count || 0, d.count || 0);
+                const restantes = Math.max(0, 3 - used);
+                if (restantes > 0) {
+                    const _txt = restantes + (restantes === 1 ? ' prova restante hoje' : ' provas restantes hoje');
+                    _els.forEach(el => { el.textContent = _txt; el.classList.remove('is-warn'); });
+                } else {
+                    _els.forEach(el => { el.textContent = 'Limite de 3 provas atingido — pague R$1 via PIX para mais uma.'; el.classList.add('is-warn'); });
+                }
+            } catch(_) { _els.forEach(el => { el.textContent = ''; el.classList.remove('is-warn'); }); }
         }
-
-        function renderLimitInfo(data) {
-            const el = document.getElementById('q-limit-info');
-            if (!el || !data) return;
-            const limit = Number(data.limit) || 3;
-            const used = Number(data.phone_count) || 0;
-            const remaining = Math.max(0, limit - used);
-            el.classList.add('is-visible');
-            while (el.firstChild) el.removeChild(el.firstChild);
-            const count = document.createElement('span');
-            count.className = 'q-limit-count';
-            count.textContent = used + '/' + limit;
-            if (data.limited || remaining === 0) {
-                el.classList.add('is-limited');
-                el.appendChild(document.createTextNode('⚠️ Limite diário atingido ('));
-                el.appendChild(count);
-                el.appendChild(document.createTextNode(') — R$1 via PIX para uma prova extra'));
-            } else {
-                el.classList.remove('is-limited');
-                el.appendChild(document.createTextNode('Suas provas hoje: '));
-                el.appendChild(count);
-                el.appendChild(document.createTextNode(' (' + remaining + ' restante' + (remaining === 1 ? '' : 's') + ')'));
-            }
-        }
-
-        function hideLimitInfo() {
-            const el = document.getElementById('q-limit-info');
-            if (el) el.classList.remove('is-visible');
-        }
+        phoneInput.addEventListener('input', () => {
+            clearTimeout(_provasDebounce);
+            _provasDebounce = setTimeout(_checkProvasRestantes, 600);
+        });
+        // chama uma vez ao abrir o modal pra mostrar provas baseadas no IP
+        setTimeout(_checkProvasRestantes, 300);
 
         function checkFields() {
             const nums = phoneInput.value.replace(/\D/g, '');
