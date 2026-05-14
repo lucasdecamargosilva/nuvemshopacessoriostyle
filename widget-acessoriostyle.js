@@ -279,20 +279,27 @@
 
         .q-provas-msg:empty { display: none; }
         .q-provas-msg {
-            font-size: 13px; margin-top: 10px; letter-spacing: 0.3px;
-            color: var(--c-ink); font-weight: 500;
-            background: var(--c-surface);
-            border: 1px solid var(--c-line);
-            border-radius: 6px;
-            padding: 10px 14px;
+            font-size: 15px; margin-top: 14px; letter-spacing: 0.4px;
+            color: #fff; font-weight: 700;
+            background: var(--c-ink);
+            border: 2px solid var(--c-ink);
+            border-radius: 8px;
+            padding: 14px 18px;
             text-align: center;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             transition: background 0.2s, color 0.2s, border-color 0.2s;
         }
         .q-provas-msg.is-warn {
-            color: var(--c-danger);
-            background: rgba(204,51,51,0.08);
-            border-color: rgba(204,51,51,0.3);
-            font-weight: 600;
+            color: #fff;
+            background: var(--c-danger);
+            border-color: var(--c-danger);
+            font-weight: 700;
+            animation: q-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes q-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(204,51,51,0.5); }
+            50%      { box-shadow: 0 0 0 8px rgba(204,51,51,0); }
         }
 
         /* ── Photo selector (product images carousel) ── */
