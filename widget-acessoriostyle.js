@@ -842,6 +842,10 @@
                         </div>
                         <div id="q-pix-status-msg" class="q-pix-status q-pix-waiting">Aguardando pagamento...</div>
                         <p class="q-pix-cancel" id="q-pix-cancel">Cancelar</p>
+                        <div id="q-pix-wa-fallback" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--c-line);text-align:center;">
+                            <p style="font-size:11px;color:var(--c-muted);margin:0 0 6px;">Prefere atendimento personalizado?</p>
+                            <a href="#" id="q-pix-wa-link" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;color:var(--c-muted);font-family:inherit;font-size:12px;font-weight:600;text-decoration:underline;"><svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.9c0 2.1.55 4.06 1.6 5.8L2 22l4.44-1.65a9.9 9.9 0 0 0 5.6 1.72h.01c5.46 0 9.9-4.45 9.9-9.9C21.95 6.45 17.5 2 12.04 2zm5.8 14.15c-.24.68-1.4 1.3-1.94 1.34-.5.05-1.13.07-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.8-4.17-4.94-4.36-.15-.19-1.18-1.57-1.18-2.99 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.77-.36l.55.01c.18.01.42-.07.66.5.24.59.83 2.04.9 2.18.07.15.12.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.75 1.24 1.62 2.01 1.11.99 2.05 1.3 2.34 1.44.29.15.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.39-.24.66-.14.27.1 1.7.8 1.99.95.29.15.48.22.55.34.07.12.07.71-.17 1.39z"/></svg> Falar com nossa consultora</a>
+                        </div>
                     </div>
 
                     <!-- Loading -->
@@ -1702,6 +1706,33 @@
             document.getElementById('q-step-pix').style.display = 'block';
             document.getElementById('q-pix-status-msg').textContent = 'Aguardando pagamento...';
             document.getElementById('q-pix-status-msg').className = 'q-pix-status q-pix-waiting';
+            wirePixWaFallback();
+        }
+
+        // Link discreto pra consultora na tela de PIX: quem nao quer pagar o R$1
+        // ainda vira lead da loja em vez de simplesmente fechar o modal.
+        let _waFallbackWired = false;
+        function wirePixWaFallback() {
+            const link = document.getElementById('q-pix-wa-link');
+            if (!link) return;
+            const msg = 'Olá! Usei o provador virtual' + (prodName ? (' e me interessei pelo ' + prodName.trim()) : '') + '.';
+            link.href = 'https://wa.me/' + ACESSORIO_STORE_WHATSAPP + '?text=' + encodeURIComponent(msg);
+            if (_waFallbackWired) return;
+            _waFallbackWired = true;
+            link.addEventListener('click', function () {
+                try {
+                    fetch('https://n8n.segredosdodrop.com/webhook/pl-provador-limit-wa-click', {
+                        method: 'POST', keepalive: true,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: (phoneInput || {}).value || '',
+                            origin: location.origin,
+                            produto: (prodName || '').trim(),
+                            source: 'pix_screen'
+                        })
+                    }).catch(function () {});
+                } catch (e) {}
+            });
         }
 
         function hidePixScreen() {
@@ -1744,27 +1775,6 @@
         }
 
         async function createPixAndPoll() {
-            /* LIMITE ATINGIDO: tela "fale com a consultora" no WhatsApp da loja (mesmo padrao da Cacife). PIX segue off. */
-            try {
-                var _ph = document.getElementById('q-step-photo'); if (_ph) _ph.style.display = 'none';
-                var _lb = document.getElementById('q-loading-box'); if (_lb) _lb.style.display = 'none';
-                var _pix = document.getElementById('q-step-pix');
-                if (_pix) {
-                    _pix.style.display = 'block'; _pix.style.textAlign = 'center';
-                    _pix.innerHTML = '<div style="width:72px;height:72px;border-radius:50%;background:var(--c-surface);border:1px solid var(--c-line);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--c-ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="15" r="3.2"/><circle cx="18" cy="15" r="3.2"/><path d="M9.2 15c0-1.2 1.2-2 2.8-2s2.8.8 2.8 2"/><path d="M2.8 13.5 4.6 8.8a2 2 0 0 1 1.9-1.3h1.2"/><path d="M21.2 13.5 19.4 8.8a2 2 0 0 0-1.9-1.3h-1.2"/></svg></div>'
-                        + '<h2>Seu provador virtual agora &eacute; com nossa consultora!</h2>'
-                        + '<p class="q-pix-subtitle" style="text-align:center;">Fale agora com nossa especialista e receba um teste personalizado com os modelos que mais valorizam seu rosto pelo WhatsApp!</p>'
-                        + '<a id="q-limit-wa-link" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#fff;border-radius:12px;padding:14px 22px;font-family:inherit;font-weight:700;font-size:15px;text-decoration:none;margin-top:16px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.9c0 2.1.55 4.06 1.6 5.8L2 22l4.44-1.65a9.9 9.9 0 0 0 5.6 1.72h.01c5.46 0 9.9-4.45 9.9-9.9C21.95 6.45 17.5 2 12.04 2zm5.8 14.15c-.24.68-1.4 1.3-1.94 1.34-.5.05-1.13.07-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.8-4.17-4.94-4.36-.15-.19-1.18-1.57-1.18-2.99 0-1.42.75-2.12 1.01-2.41.27-.29.58-.36.77-.36l.55.01c.18.01.42-.07.66.5.24.59.83 2.04.9 2.18.07.15.12.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.75 1.24 1.62 2.01 1.11.99 2.05 1.3 2.34 1.44.29.15.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.39-.24.66-.14.27.1 1.7.8 1.99.95.29.15.48.22.55.34.07.12.07.71-.17 1.39z"/></svg> Quero meu teste personalizado</a>';
-                    var _pn = ((document.querySelector('h1.js-product-name, h1.product-name, h1.product__title, h1') || {}).innerText || '').trim();
-                    var _waMsg = 'Olá! Usei o provador virtual' + (_pn ? (' e me interessei pelo ' + _pn) : '') + '.';
-                    var _lk = document.getElementById('q-limit-wa-link');
-                    if (_lk) {
-                        _lk.href = 'https://wa.me/' + ACESSORIO_STORE_WHATSAPP + '?text=' + encodeURIComponent(_waMsg);
-                        _lk.addEventListener('click', function () { try { fetch('https://n8n.segredosdodrop.com/webhook/pl-provador-limit-wa-click', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: (document.getElementById('q-phone') || document.querySelector('#q-modal-ia input[type=tel], input[type=tel]') || {}).value || '', origin: location.origin, produto: _pn }) }).catch(function () {}); } catch (e) {} });
-                    }
-                }
-            } catch (e) {}
-            return;
             showPixScreen();
             const phone = '55' + phoneInput.value.replace(/\D/g, '');
             try {
