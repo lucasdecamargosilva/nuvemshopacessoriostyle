@@ -1239,6 +1239,11 @@
         let userPhoto = null;
         let pixPaymentId = null;
         let selectedProductImgUrl = '';
+        // true quando a cliente CLICOU numa miniatura (escolha explícita).
+        // Nesse caso a foto escolhida manda: nao pode ser rebaixada pela deteccao
+        // de rosto nem misturada com fotos de outra variante de lente (clip-on
+        // solar x transparente), senao o gerador devolve a lente errada.
+        let userPickedPhoto = false;
 
         // Upgrade Nuvemshop CDN URLs to 1024px version
         function upgradeImgUrl(url) {
@@ -1305,6 +1310,7 @@
             const arrowR = document.getElementById('q-photo-arrow-right');
 
             selectedProductImgUrl = imgs[0] || '';
+            userPickedPhoto = false;
 
             if (!group || !thumbs || imgs.length <= 1) {
                 if (group) group.classList.remove('is-visible');
@@ -1329,6 +1335,7 @@
                 btn.appendChild(check);
                 btn.addEventListener('click', () => {
                     selectedProductImgUrl = url;
+                    userPickedPhoto = true;
                     thumbs.querySelectorAll('.q-photo-thumb').forEach(t => t.classList.remove('is-selected'));
                     btn.classList.add('is-selected');
                 });
@@ -1908,6 +1915,11 @@ const fd = new FormData();
                     // 1ª = prodImg (escolhida pelo cliente ou default); demais = extractImages() exceto a 1ª.
                     let allProdImgs = [];
                     if (prodImg) allProdImgs.push(prodImg);
+                    // Escolha explicita da cliente => manda SO essa foto. Em produtos
+                    // com mais de uma variante de lente na mesma galeria (clip-on:
+                    // solar + transparente) as fotos extras faziam o gerador devolver
+                    // a lente errada, ignorando o que ela selecionou.
+                    if (!userPickedPhoto) {
                     try {
                         if (typeof extractImages === 'function') {
                             const extra = extractImages();
@@ -1919,13 +1931,17 @@ const fd = new FormData();
                             }
                         }
                     } catch (_) {}
+                    }
                     // Detecção de rosto: manda 1 foto no rosto como PRINCIPAL (o gerador usa pra
                     // calibrar a proporção/tamanho do óculos) + as fotos de fundo branco (packshot),
                     // que mostram os detalhes da armação. Assim garante proporção E detalhe.
                     // Sem rosto detectado → mantém as fotos default (fallback, sem regressão).
                     try {
                         if (faceDetectPromise) { await Promise.race([faceDetectPromise, new Promise(function (r) { setTimeout(r, 4000); })]); }
-                        if (_faceUrls && _faceUrls.length) {
+                        // userPickedPhoto: NAO reordena. O _faceUrls[0] virava a foto
+                        // principal e sobrescrevia a escolha da cliente (num clip-on a
+                        // foto "modelo usando" e a solar => saia sempre com lente solar).
+                        if (!userPickedPhoto && _faceUrls && _faceUrls.length) {
                             var _key = function (u) { return String(u || '').split('?')[0]; };
                             var _faceKeys = {};
                             _faceUrls.forEach(function (u) { _faceKeys[_key(u)] = 1; });
