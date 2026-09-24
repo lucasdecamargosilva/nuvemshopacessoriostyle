@@ -1073,6 +1073,9 @@
 
 
     function init() {
+        // Kill switch: true = provador fora da loja (cota de 3000 provas do ciclo 13/09).
+        var PL_PROVADOR_OFF = false;
+        if (PL_PROVADOR_OFF) return;
         // --- FILTRO DE CATEGORIA (HAT) ---
         const productNameNormalized = (document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title).toUpperCase();
         if (productNameNormalized.includes('HAT')) {
@@ -2195,6 +2198,12 @@ const fd = new FormData();
                     body: JSON.stringify({ phone, reserve: true })
                 });
                 const data = await resp.json();
+                if (data.off) {
+                    // Cota do ciclo esgotada: tira o provador da página (sem PIX).
+                    try { closeModal(); } catch (_) {}
+                    try { document.querySelectorAll('.q-btn-trigger-ia,.q-btn-inline-provador').forEach(function (el) { el.remove(); }); } catch (_) {}
+                    return;
+                }
                 if (data.limited) {
             try { document.getElementById('q-loading-box').style.display = 'none'; } catch (_) {}
                     genBtn.disabled = false;
