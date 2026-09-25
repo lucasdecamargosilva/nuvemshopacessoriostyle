@@ -1074,7 +1074,7 @@
 
     function init() {
         // Kill switch: true = provador fora da loja (cota de 3000 provas do ciclo 13/09).
-        var PL_PROVADOR_OFF = true;
+        var PL_PROVADOR_OFF = false;
         if (PL_PROVADOR_OFF) return;
         // --- FILTRO DE CATEGORIA (HAT) ---
         const productNameNormalized = (document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title).toUpperCase();
